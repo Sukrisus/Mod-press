@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Mod Browser</title>
-    <base href="/Mod-press/">
+    <title>Debug Mod Browser</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -16,27 +15,20 @@
     <script src="https://cdn.jsdelivr.net/npm/js-yaml/dist/js-yaml.min.js"></script>
     <style>
         :root {
-            /* Refined Material You Dark Theme Colors */
             --md-sys-color-primary: #BB86FC;
             --md-sys-color-on-primary: #000000;
             --md-sys-color-primary-container: #8C4AF2;
             --md-sys-color-on-primary-container: #FFFFFF;
-
             --md-sys-color-secondary: #03DAC6;
             --md-sys-color-on-secondary: #000000;
-
             --md-sys-color-background: #121212;
             --md-sys-color-on-background: #E0E0E0;
-
             --md-sys-color-surface: #1E1E1E;
             --md-sys-color-on-surface: #E0E0E0;
-
             --md-sys-color-card-background: #252525;
             --md-sys-color-on-card-background: #E0E0E0;
-
             --md-sys-color-outline: #3C3C3C;
             --md-sys-color-subtext: #A0A0A0;
-
             --border-radius-medium: 12px;
             --border-radius-large: 16px;
         }
@@ -90,7 +82,7 @@
 
         #search-bar {
             width: 100%;
-            padding: 14px 18px 14px 45px; /* Add padding for icon */
+            padding: 14px 18px 14px 45px;
             border: 1px solid var(--md-sys-color-outline);
             border-radius: var(--border-radius-medium);
             background-color: var(--md-sys-color-surface);
@@ -110,6 +102,30 @@
             border-color: var(--md-sys-color-primary);
             box-shadow: 0 0 0 4px rgba(187, 134, 252, 0.4);
             background-color: #2a2a2a;
+        }
+
+        #debug-info {
+            background-color: var(--md-sys-color-surface);
+            padding: 15px;
+            margin: 20px;
+            border-radius: 8px;
+            max-width: 1200px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        #debug-info h3 {
+            color: var(--md-sys-color-primary);
+            margin: 0 0 10px 0;
+        }
+
+        #debug-info pre {
+            background-color: #333;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+            color: #fff;
         }
 
         #mod-container {
@@ -132,7 +148,7 @@
             transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out, background-color 0.3s ease;
             opacity: 0;
             animation: fadeInAndSlideUp 0.6s ease-out forwards;
-            border: 1px solid transparent; /* Prepare for hover effect */
+            border: 1px solid transparent;
         }
 
         .mod-card:hover {
@@ -157,7 +173,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2em; /* Adjusted for icon size */
+            font-size: 2em;
             color: var(--md-sys-color-primary);
         }
 
@@ -208,7 +224,7 @@
         }
 
         #no-results {
-            display: none; /* Hidden by default */
+            display: none;
             color: var(--md-sys-color-subtext);
             text-align: center;
             width: 100%;
@@ -225,7 +241,6 @@
             font-size: 0.9em;
         }
 
-        /* Keyframe Animations */
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
@@ -244,11 +259,16 @@
 </head>
 <body>
     <div class="header">
-        <h1>Mod-press</h1>
+        <h1>Mod-press (Debug Mode)</h1>
         <div id="search-container">
             <i class="material-icons" id="search-icon">search</i>
             <input type="text" id="search-bar" placeholder="Search mods">
         </div>
+    </div>
+
+    <div id="debug-info">
+        <h3>Debug Information:</h3>
+        <pre id="debug-log">Loading debug info...</pre>
     </div>
 
     <div id="mod-container">
@@ -264,6 +284,12 @@
 
     <script>
         let modsData = [];
+        const debugLog = document.getElementById('debug-log');
+
+        function log(message) {
+            console.log(message);
+            debugLog.textContent += message + '\n';
+        }
 
         function parseFrontMatter(text) {
             const frontMatterRegex = /^---([\s\S]*?)---/;
@@ -286,18 +312,24 @@
             const card = document.createElement('div');
             card.classList.add('mod-card');
 
-            const descriptionHtml = marked.parse(mod.description);
+            // Safe fallbacks for undefined values
+            const name = mod.name || 'Unknown Mod';
+            const author = mod.author || 'Unknown Author';
+            const description = mod.description || 'No description available';
+            const downloadLink = mod.downloadLink || '#';
+
+            const descriptionHtml = marked.parse(description);
 
             card.innerHTML = `
                 <div class="mod-card-header">
                     <div class="mod-icon"><i class="material-icons">extension</i></div>
                     <div class="mod-card-title">
-                        <h2>${mod.name}</h2>
-                        <span class="author">by ${mod.author}</span>
+                        <h2>${name}</h2>
+                        <span class="author">by ${author}</span>
                     </div>
                 </div>
                 <div class="description">${descriptionHtml}</div>
-                <a href="${mod.downloadLink}" class="download-button" target="_blank" rel="noopener noreferrer">Download</a>
+                <a href="${downloadLink}" class="download-button" target="_blank" rel="noopener noreferrer">Download</a>
             `;
             return card;
         }
@@ -305,13 +337,16 @@
         function displayMods(modsToDisplay) {
             const modContainer = document.getElementById('mod-container');
             const noResults = document.getElementById('no-results');
-            modContainer.innerHTML = ''; // Clear existing mods
+            modContainer.innerHTML = '';
+
+            log(`Displaying ${modsToDisplay.length} mods`);
 
             if (modsToDisplay.length === 0) {
                 noResults.style.display = 'block';
             } else {
                 noResults.style.display = 'none';
                 modsToDisplay.forEach((mod, index) => {
+                    log(`Mod ${index}: ${JSON.stringify(mod)}`);
                     const card = createModCard(mod);
                     card.style.animationDelay = `${index * 0.08}s`;
                     modContainer.appendChild(card);
@@ -322,39 +357,97 @@
         function handleSearch() {
             const searchTerm = document.getElementById('search-bar').value.toLowerCase();
             const filteredMods = modsData.filter(mod =>
-                mod.name.toLowerCase().includes(searchTerm) ||
-                mod.description.toLowerCase().includes(searchTerm) ||
-                mod.author.toLowerCase().includes(searchTerm)
+                (mod.name && mod.name.toLowerCase().includes(searchTerm)) ||
+                (mod.description && mod.description.toLowerCase().includes(searchTerm)) ||
+                (mod.author && mod.author.toLowerCase().includes(searchTerm))
             );
             displayMods(filteredMods);
         }
 
         async function loadMods() {
             try {
-                const response = await fetch('mods.json');
+                log('Starting to load mods...');
+                log(`Current URL: ${window.location.href}`);
+                log(`Base URI: ${document.baseURI}`);
+                
+                // Try different paths
+                const possiblePaths = [
+                    'mods.json',
+                    './mods.json',
+                    '/Mod-press/mods.json',
+                    `${window.location.pathname}mods.json`
+                ];
+
+                let response = null;
+                let usedPath = '';
+
+                for (let path of possiblePaths) {
+                    try {
+                        log(`Trying path: ${path}`);
+                        response = await fetch(path);
+                        if (response.ok) {
+                            usedPath = path;
+                            log(`Success with path: ${path}`);
+                            break;
+                        } else {
+                            log(`Failed with path: ${path} - Status: ${response.status}`);
+                        }
+                    } catch (err) {
+                        log(`Error with path: ${path} - ${err.message}`);
+                    }
+                }
+
+                if (!response || !response.ok) {
+                    throw new Error('Could not load mods.json from any path');
+                }
+
                 const data = await response.json();
+                log(`Loaded mods.json: ${JSON.stringify(data)}`);
+                
                 const modFiles = data.mods;
+                if (!modFiles || !Array.isArray(modFiles)) {
+                    throw new Error('Invalid mods.json format');
+                }
 
-                const modPromises = modFiles.map(async (file) => {
-                    const modResponse = await fetch(`mods/${file}`);
-                    const modText = await modResponse.text();
-                    const parsed = parseFrontMatter(modText);
+                const modPromises = modFiles.map(async (file, index) => {
+                    try {
+                        log(`Loading mod file: ${file}`);
+                        const modPath = usedPath.replace('mods.json', `mods/${file}`);
+                        const modResponse = await fetch(modPath);
+                        
+                        if (!modResponse.ok) {
+                            log(`Failed to load ${file}: Status ${modResponse.status}`);
+                            return null;
+                        }
 
-                    return {
-                        name: parsed.attributes.name,
-                        author: parsed.attributes.author,
-                        description: parsed.body.trim(),
-                        downloadLink: parsed.attributes.downloadLink
-                    };
+                        const modText = await modResponse.text();
+                        log(`Raw content for ${file}: ${modText.substring(0, 200)}...`);
+                        
+                        const parsed = parseFrontMatter(modText);
+                        log(`Parsed attributes for ${file}: ${JSON.stringify(parsed.attributes)}`);
+
+                        return {
+                            name: parsed.attributes.name,
+                            author: parsed.attributes.author,
+                            description: parsed.body.trim(),
+                            downloadLink: parsed.attributes.downloadLink
+                        };
+                    } catch (error) {
+                        log(`Error loading ${file}: ${error.message}`);
+                        return null;
+                    }
                 });
 
-                modsData = await Promise.all(modPromises);
+                const results = await Promise.all(modPromises);
+                modsData = results.filter(mod => mod !== null);
+                
+                log(`Final modsData: ${JSON.stringify(modsData)}`);
                 displayMods(modsData);
             } catch (error) {
-                console.error("Error loading mods:", error);
+                log(`Error loading mods: ${error.message}`);
+                log(`Error stack: ${error.stack}`);
             }
         }
-
 
         document.addEventListener('DOMContentLoaded', () => {
             loadMods();
