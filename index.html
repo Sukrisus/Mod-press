@@ -285,7 +285,8 @@
             const card = document.createElement('div');
             card.classList.add('mod-card');
 
-            const descriptionHtml = marked.parse(mod.description);
+            // Ensure description is not null or undefined before parsing
+            const descriptionHtml = mod.description ? marked.parse(mod.description) : '';
 
             card.innerHTML = `
                 <div class="mod-card-header">
@@ -322,7 +323,7 @@
             const searchTerm = document.getElementById('search-bar').value.toLowerCase();
             const filteredMods = modsData.filter(mod =>
                 mod.name.toLowerCase().includes(searchTerm) ||
-                mod.description.toLowerCase().includes(searchTerm) ||
+                (mod.description && mod.description.toLowerCase().includes(searchTerm)) || // Check if description exists
                 mod.author.toLowerCase().includes(searchTerm)
             );
             displayMods(filteredMods);
@@ -331,13 +332,26 @@
         async function loadMods() {
             try {
                 const response = await fetch('mods.json');
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
                 const modFiles = data.mods;
 
                 const modPromises = modFiles.map(async (file) => {
-                    const modResponse = await fetch(`./mods/${file}`);
+                    // --- THIS IS THE MODIFIED LINE ---
+                    // It now fetches from the root directory instead of './mods/'
+                    const modResponse = await fetch(file);
+                    if (!modResponse.ok) {
+                        console.error(`Failed to fetch ${file}. Status: ${modResponse.status}`);
+                        return null; // Skip this mod if it fails to load
+                    }
                     const modText = await modResponse.text();
                     const parsed = parseFrontMatter(modText);
+
+                    // Basic validation
+                    if (!parsed.attributes || !parsed.attributes.name) {
+                        console.error(`Front-matter is missing or invalid in ${file}.`);
+                        return null;
+                    }
 
                     return {
                         name: parsed.attributes.name,
@@ -346,11 +360,15 @@
                         downloadLink: parsed.attributes.downloadLink
                     };
                 });
+                
+                // Wait for all promises to resolve and filter out any nulls from failed fetches
+                const loadedMods = await Promise.all(modPromises);
+                modsData = loadedMods.filter(mod => mod !== null);
 
-                modsData = await Promise.all(modPromises);
                 displayMods(modsData);
             } catch (error) {
                 console.error("Error loading mods:", error);
+                document.getElementById('mod-container').innerHTML = '<p style="text-align: center; color: #CF6679;">Failed to load mods. Check mods.json and ensure all .md files are present in the root directory.</p>';
             }
         }
 
