@@ -3,16 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dynamic Mod Browser</title>
+    <title>Self-Contained Mod Browser</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <!-- Material Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <!-- Marked.js for Markdown parsing -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- js-yaml for front-matter parsing -->
-    <script src="https://cdn.jsdelivr.net/npm/js-yaml/dist/js-yaml.min.js"></script>
     <style>
         :root {
             /* Refined Material You Dark Theme Colors */
@@ -251,6 +247,7 @@
     </div>
 
     <div id="mod-container">
+        <!-- Mod cards will be generated here by JavaScript -->
     </div>
 
     <div id="no-results">
@@ -262,32 +259,40 @@
     </footer>
 
     <script>
-        let modsData = [];
-
-        function parseFrontMatter(text) {
-            const frontMatterRegex = /^---([\s\S]*?)---/;
-            const match = frontMatterRegex.exec(text);
-            if (match) {
-                const frontMatter = match[1];
-                const content = text.slice(match[0].length);
-                return {
-                    attributes: jsyaml.load(frontMatter),
-                    body: content
-                };
+        // All mod data is now stored here. No more external files!
+        const modsData = [
+            {
+                name: "Force close ore ui",
+                author: "Jacey",
+                description: "disables the new minecraft **ore ui** bringing back the json ui",
+                downloadLink: "https://github.com/QYCottage/ForceCloseOreUI/releases/download/v1.0.4/libForceCloseOreUI.so"
+            },
+            {
+                name: "build limit changer",
+                author: "zeuroux",
+                description: "change the build limit of all the demesions",
+                downloadLink: "https://github.com/Zeuroux/BuildLimitChanger/releases/tag/v0.0.2"
+            },
+            {
+                name: "Better resource pack manager",
+                author: "Jacey",
+                description: "change texture packs in-game",
+                downloadLink: "https://cdn.discordapp.com/attachments/1371455592778043442/1402899496660111360/libBetterResourcePackManager-arm64.so?ex=68bfc778&is=68be75f8&hm=73e7e3fd4cc7374b7c24ed3e370fa57a9071ef96519d2720445fedebc9595a46&"
+                
+            },
+            {
+                name: "Better renderdragon",
+                author: "Jacey",
+                description: "load patch shaders, force use vibrant visuals, etc",
+                downloadLink: "https://github.com/QYCottage/BetterRenderDragon/releases/download/v1.6.3/libBetterRenderDragon.so"
             }
-            return {
-                attributes: {},
-                body: text
-            };
-        }
+        ];
 
         function createModCard(mod) {
             const card = document.createElement('div');
             card.classList.add('mod-card');
 
-            // Ensure description is not null or undefined before parsing
-            const descriptionHtml = mod.description ? marked.parse(mod.description) : '';
-
+            // The description is now plain text, so no parsing is needed.
             card.innerHTML = `
                 <div class="mod-card-header">
                     <div class="mod-icon"><i class="material-icons">extension</i></div>
@@ -296,7 +301,7 @@
                         <span class="author">by ${mod.author}</span>
                     </div>
                 </div>
-                <div class="description">${descriptionHtml}</div>
+                <div class="description">${mod.description}</div>
                 <a href="${mod.downloadLink}" class="download-button" target="_blank" rel="noopener noreferrer">Download</a>
             `;
             return card;
@@ -323,58 +328,15 @@
             const searchTerm = document.getElementById('search-bar').value.toLowerCase();
             const filteredMods = modsData.filter(mod =>
                 mod.name.toLowerCase().includes(searchTerm) ||
-                (mod.description && mod.description.toLowerCase().includes(searchTerm)) || // Check if description exists
+                mod.description.toLowerCase().includes(searchTerm) ||
                 mod.author.toLowerCase().includes(searchTerm)
             );
             displayMods(filteredMods);
         }
 
-        async function loadMods() {
-            try {
-                const response = await fetch('mods.json');
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-                const modFiles = data.mods;
-
-                const modPromises = modFiles.map(async (file) => {
-                    // --- THIS IS THE MODIFIED LINE ---
-                    // It now fetches from the root directory instead of './mods/'
-                    const modResponse = await fetch(file);
-                    if (!modResponse.ok) {
-                        console.error(`Failed to fetch ${file}. Status: ${modResponse.status}`);
-                        return null; // Skip this mod if it fails to load
-                    }
-                    const modText = await modResponse.text();
-                    const parsed = parseFrontMatter(modText);
-
-                    // Basic validation
-                    if (!parsed.attributes || !parsed.attributes.name) {
-                        console.error(`Front-matter is missing or invalid in ${file}.`);
-                        return null;
-                    }
-
-                    return {
-                        name: parsed.attributes.name,
-                        author: parsed.attributes.author,
-                        description: parsed.body.trim(),
-                        downloadLink: parsed.attributes.downloadLink
-                    };
-                });
-                
-                // Wait for all promises to resolve and filter out any nulls from failed fetches
-                const loadedMods = await Promise.all(modPromises);
-                modsData = loadedMods.filter(mod => mod !== null);
-
-                displayMods(modsData);
-            } catch (error) {
-                console.error("Error loading mods:", error);
-                document.getElementById('mod-container').innerHTML = '<p style="text-align: center; color: #CF6679;">Failed to load mods. Check mods.json and ensure all .md files are present in the root directory.</p>';
-            }
-        }
-
-
+        // When the page loads, display the mods from our array and set up the search bar.
         document.addEventListener('DOMContentLoaded', () => {
-            loadMods();
+            displayMods(modsData);
             document.getElementById('search-bar').addEventListener('input', handleSearch);
         });
     </script>
