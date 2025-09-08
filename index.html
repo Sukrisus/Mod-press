@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Mod Browser</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- js-yaml for front-matter parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml/dist/js-yaml.min.js"></script>
+    <style>
+        :root {
+            /* Refined Material You Dark Theme Colors */
+            --md-sys-color-primary: #BB86FC;
+            --md-sys-color-on-primary: #000000;
+            --md-sys-color-primary-container: #8C4AF2;
+            --md-sys-color-on-primary-container: #FFFFFF;
+
+            --md-sys-color-secondary: #03DAC6;
+            --md-sys-color-on-secondary: #000000;
+
+            --md-sys-color-background: #121212;
+            --md-sys-color-on-background: #E0E0E0;
+
+            --md-sys-color-surface: #1E1E1E;
+            --md-sys-color-on-surface: #E0E0E0;
+
+            --md-sys-color-card-background: #252525;
+            --md-sys-color-on-card-background: #E0E0E0;
+
+            --md-sys-color-outline: #3C3C3C;
+            --md-sys-color-subtext: #A0A0A0;
+
+            --border-radius-medium: 12px;
+            --border-radius-large: 16px;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--md-sys-color-background);
+            color: var(--md-sys-color-on-background);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .header {
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-bottom: 1px solid var(--md-sys-color-outline);
+            margin-bottom: 30px;
+            animation: fadeIn 1s ease-out;
+        }
+
+        h1 {
+            color: var(--md-sys-color-primary);
+            margin: 0 0 20px 0;
+            font-size: 2.5em;
+            letter-spacing: 0.05em;
+        }
+
+        #search-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            animation: slideInFromTop 0.8s ease-out forwards;
+            opacity: 0;
+        }
+
+        #search-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--md-sys-color-subtext);
+        }
+
+        #search-bar {
+            width: 100%;
+            padding: 14px 18px 14px 45px; /* Add padding for icon */
+            border: 1px solid var(--md-sys-color-outline);
+            border-radius: var(--border-radius-medium);
+            background-color: var(--md-sys-color-surface);
+            color: var(--md-sys-color-on-surface);
+            font-size: 1.1em;
+            box-sizing: border-box;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+        }
+
+        #search-bar::placeholder {
+            color: var(--md-sys-color-subtext);
+            opacity: 0.7;
+        }
+
+        #search-bar:focus {
+            outline: none;
+            border-color: var(--md-sys-color-primary);
+            box-shadow: 0 0 0 4px rgba(187, 134, 252, 0.4);
+            background-color: #2a2a2a;
+        }
+
+        #mod-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+            padding: 0 20px 20px 20px;
+        }
+
+        .mod-card {
+            background-color: var(--md-sys-color-card-background);
+            border-radius: var(--border-radius-large);
+            padding: 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out, background-color 0.3s ease;
+            opacity: 0;
+            animation: fadeInAndSlideUp 0.6s ease-out forwards;
+            border: 1px solid transparent; /* Prepare for hover effect */
+        }
+
+        .mod-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+            background-color: #2f2f2f;
+            border-color: var(--md-sys-color-primary);
+        }
+
+        .mod-card-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+
+        .mod-icon {
+            flex-shrink: 0;
+            width: 50px;
+            height: 50px;
+            border-radius: var(--border-radius-medium);
+            background-color: var(--md-sys-color-surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em; /* Adjusted for icon size */
+            color: var(--md-sys-color-primary);
+        }
+
+        .mod-card-title h2 {
+            color: var(--md-sys-color-on-card-background);
+            margin: 0;
+            font-size: 1.4em;
+            line-height: 1.3;
+        }
+
+        .mod-card-title .author {
+            background-color: var(--md-sys-color-surface);
+            color: var(--md-sys-color-subtext);
+            font-size: 0.8em;
+            padding: 3px 8px;
+            border-radius: 6px;
+            display: inline-block;
+            margin-top: 5px;
+        }
+
+        .mod-card .description {
+            margin: 0;
+            font-size: 1em;
+            line-height: 1.5;
+            flex-grow: 1;
+            color: var(--md-sys-color-subtext);
+        }
+
+        .download-button {
+            background-color: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            text-decoration: none;
+            text-align: center;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            margin-top: auto;
+            font-size: 1.05em;
+        }
+
+        .download-button:hover {
+            background-color: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+            transform: translateY(-2px);
+        }
+
+        #no-results {
+            display: none; /* Hidden by default */
+            color: var(--md-sys-color-subtext);
+            text-align: center;
+            width: 100%;
+            padding: 40px;
+            font-size: 1.2em;
+        }
+
+        .footer {
+            width: 100%;
+            text-align: center;
+            padding: 20px;
+            margin-top: auto;
+            color: var(--md-sys-color-subtext);
+            font-size: 0.9em;
+        }
+
+        /* Keyframe Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideInFromTop {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes fadeInAndSlideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Mod-press</h1>
+        <div id="search-container">
+            <i class="material-icons" id="search-icon">search</i>
+            <input type="text" id="search-bar" placeholder="Search mods">
+        </div>
+    </div>
+
+    <div id="mod-container">
+    </div>
+
+    <div id="no-results">
+        <p>No mods found. Try a different search term.</p>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2025 Mod-press. All rights reserved.</p>
+    </footer>
+
+    <script>
+        let modsData = [];
+
+        function parseFrontMatter(text) {
+            const frontMatterRegex = /^---([\s\S]*?)---/;
+            const match = frontMatterRegex.exec(text);
+            if (match) {
+                const frontMatter = match[1];
+                const content = text.slice(match[0].length);
+                return {
+                    attributes: jsyaml.load(frontMatter),
+                    body: content
+                };
+            }
+            return {
+                attributes: {},
+                body: text
+            };
+        }
+
+        function createModCard(mod) {
+            const card = document.createElement('div');
+            card.classList.add('mod-card');
+
+            const descriptionHtml = marked.parse(mod.description);
+
+            card.innerHTML = `
+                <div class="mod-card-header">
+                    <div class="mod-icon"><i class="material-icons">extension</i></div>
+                    <div class="mod-card-title">
+                        <h2>${mod.name}</h2>
+                        <span class="author">by ${mod.author}</span>
+                    </div>
+                </div>
+                <div class="description">${descriptionHtml}</div>
+                <a href="${mod.downloadLink}" class="download-button" target="_blank" rel="noopener noreferrer">Download</a>
+            `;
+            return card;
+        }
+
+        function displayMods(modsToDisplay) {
+            const modContainer = document.getElementById('mod-container');
+            const noResults = document.getElementById('no-results');
+            modContainer.innerHTML = ''; // Clear existing mods
+
+            if (modsToDisplay.length === 0) {
+                noResults.style.display = 'block';
+            } else {
+                noResults.style.display = 'none';
+                modsToDisplay.forEach((mod, index) => {
+                    const card = createModCard(mod);
+                    card.style.animationDelay = `${index * 0.08}s`;
+                    modContainer.appendChild(card);
+                });
+            }
+        }
+
+        function handleSearch() {
+            const searchTerm = document.getElementById('search-bar').value.toLowerCase();
+            const filteredMods = modsData.filter(mod =>
+                mod.name.toLowerCase().includes(searchTerm) ||
+                mod.description.toLowerCase().includes(searchTerm) ||
+                mod.author.toLowerCase().includes(searchTerm)
+            );
+            displayMods(filteredMods);
+        }
+
+        async function loadMods() {
+            try {
+                const response = await fetch('mods.json');
+                const data = await response.json();
+                const modFiles = data.mods;
+
+                const modPromises = modFiles.map(async (file) => {
+                    const modResponse = await fetch(`mods/${file}`);
+                    const modText = await modResponse.text();
+                    const parsed = parseFrontMatter(modText);
+
+                    return {
+                        name: parsed.attributes.name,
+                        author: parsed.attributes.author,
+                        description: parsed.body.trim(),
+                        downloadLink: parsed.attributes.downloadLink
+                    };
+                });
+
+                modsData = await Promise.all(modPromises);
+                displayMods(modsData);
+            } catch (error) {
+                console.error("Error loading mods:", error);
+            }
+        }
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMods();
+            document.getElementById('search-bar').addEventListener('input', handleSearch);
+        });
+    </script>
+</body>
+</html>
